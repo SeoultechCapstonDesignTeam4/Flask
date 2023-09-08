@@ -118,8 +118,11 @@ class MobileNet(nn.Module):
 
 device = "cuda" if torch.cuda.is_available() else   "cpu"
 model = MobileNet(1, 2)
-model.load_state_dict(torch.load('conjunctivitis.pt', map_location=device))
+model.load_state_dict(torch.load('eye.pt', map_location=device))
 model.eval()
+eye_check_model = MobileNet(1,2)
+eye_check_model.load_state_dict(torch.load('eye_detection.pt', map_location=device))
+eye_check_model = eval()
 
 # define the transformations for the image
 image_transforms = transforms.Compose([
