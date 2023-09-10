@@ -9,6 +9,7 @@ from PIL import Image
 app = Flask(__name__)
 
 # Depthwise Separable Convolution
+# Depthwise Separable Convolution
 class Depthwise(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1):
         super().__init__()
@@ -29,6 +30,7 @@ class Depthwise(nn.Module):
         x = self.depthwise(x)
         x = self.pointwise(x)
         return x
+     
 
 # Basic Conv2d
 class BasicConv2d(nn.Module):
@@ -44,10 +46,11 @@ class BasicConv2d(nn.Module):
     def forward(self, x):
         x = self.conv(x)
         return x
+     
 
 # MobileNetV1
 class MobileNet(nn.Module):
-    def __init__(self, width_multiplier, num_classes=2, init_weights=True):
+    def __init__(self, width_multiplier, num_classes=11, init_weights=True):
         super().__init__()
         self.init_weights=init_weights
         alpha = width_multiplier
@@ -120,9 +123,9 @@ device = "cuda" if torch.cuda.is_available() else   "cpu"
 model = MobileNet(1, 2)
 model.load_state_dict(torch.load('eye.pt', map_location=device))
 model.eval()
-eye_check_model = MobileNet(1,2)
-eye_check_model.load_state_dict(torch.load('eye_detection.pt', map_location=device))
-eye_check_model = eval()
+# eye_check_model = MobileNet(1,2)
+# eye_check_model.load_state_dict(torch.load('eye_detection.pt', map_location=device))
+# eye_check_model = eval()
 
 # define the transformations for the image
 image_transforms = transforms.Compose([
@@ -159,9 +162,7 @@ image_transforms = transforms.Compose([
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    print(request.files)
     image_file = request.files['image']
-
     image = Image.open(image_file)
     image_tensor = image_transforms(image).unsqueeze(0)
 
