@@ -121,8 +121,17 @@ class MobileNet(nn.Module):
 
 device = "cuda" if torch.cuda.is_available() else   "cpu"
 model = MobileNet(1, 2)
-model.load_state_dict(torch.load('eye.pt', map_location=device))
-model.eval()
+state_dict = torch.load('eye.pt', map_location=device)
+# 모델의 state_dict에서 linear 레이어에 해당하는 가중치와 편향을 가져옵니다.
+model_state_dict = model.state_dict()
+for key in list(state_dict.keys()):
+    if 'linear' in key:  # linear 레이어에 해당하는 키 찾기
+        new_key = key.replace('linear', 'linear')  # 현재 모델의 키로 변경
+        state_dict[new_key] = state_dict.pop(key)
+# 모델에 적용
+model.load_state_dict(state_dict)
+# model.load_state_dict(torch.load('eye.pt', map_location=device))
+# model.eval()
 # eye_check_model = MobileNet(1,2)
 # eye_check_model.load_state_dict(torch.load('eye_detection.pt', map_location=device))
 # eye_check_model = eval()
