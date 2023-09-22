@@ -7,6 +7,17 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 from PIL import Image
+import sys
+import os
+
+# 현재 스크립트의 경로를 가져옵니다.
+current_path = os.path.dirname(os.path.abspath(__file__))
+
+# yolov5의 경로를 sys.path에 추가합니다.
+sys.path.append(os.path.join(current_path, '..', 'yolov5'))
+
+from models.yolo import Model
+
 
 app = Flask(__name__)
 
@@ -125,54 +136,14 @@ device = "cuda" if torch.cuda.is_available() else   "cpu"
 model = MobileNet(1, 5)
 
 state_dict = torch.load('eye.pt', map_location=device)
-# 모델의 state_dict에서 linear 레이어에 해당하는 가중치와 편향을 가져옵니다.
-# model_state_dict = model.state_dict()
-# for key in list(state_dict.keys()):
-#     if 'linear' in key:  # linear 레이어에 해당하는 키 찾기
-#         new_key = key.replace('linear', 'linear')  # 현재 모델의 키로 변경
-#         state_dict[new_key] = state_dict.pop(key)
-# 모델에 적용
 model.load_state_dict(state_dict)
 model.eval()
 
-# model.load_state_dict(torch.load('eye.pt', map_location=device))
-# model.eval()
-# eye_check_model = MobileNet(1,2)
-# eye_check_model.load_state_dict(torch.load('eye_detection.pt', map_location=device))
-# eye_check_model = eval()
-
-# define the transformations for the image
 image_transforms = transforms.Compose([
     transforms.Resize(224),
     transforms.ToTensor()
 ])
  
-
-# if __name__ == "__main__":
-#     device = "cuda" if torch.cuda.is_available() else "cpu"
-#     model = MobileNet(1, 2)
-#     model.load_state_dict(torch.load('weights.pt', map_location=device))
-#     model.eval()
-
-#     image_transforms = transforms.Compose([
-#         transforms.Resize(224),
-#         transforms.ToTensor(),
-#     ])
-
-    # image = Image.open('testfile.jpeg')
-    # image_tensor = image_transforms(image).unsqueeze(0)
-
-    # with torch.no_grad():
-    #   output = model(image_tensor)
-
-    # label = ['conjunctivitis', 'normal']
-    # _, predicted = torch.max(output.data, 1)
-    # print('Predicted:', label[predicted.item()])
-
-    # probabilities = F.softmax(output, dim=1)
-    # predicted_class = torch.argmax(probabilities, dim=1)
-    # confidence = torch.max(probabilities).item() * 100
-    # print(f"Confidence: {confidence:.2f}%")
 def preprocess_image(image_path):
     # 이미지를 열고 RGB 형식으로 변환
     image = Image.open(image_path).convert("RGB")
@@ -193,11 +164,15 @@ def preprocess_image(image_path):
     return image_tensor
 
 eye_label = ['정상', '결막염', '백내장', '색소침착성 각막염', '유루증']
-eye_detection_model = torch.hub.load('ultralytics/yolov5', 'custom', path='./eye_detection.pt', force_reload=True)
+eye_detection_model_path = os.path.join(current_path, 'eye_detection.pt')
+
+eye_detection_model = Model(eye_detection_model_path)
 eye_detection_model
 test_file = './정상_눈두개.jpg'
 
-@app.route('/test', methods=['POST'])
+
+
+@app.route('/test', methods=['GET'])
 def test():
     try:
         # image_file = request.files['image']
