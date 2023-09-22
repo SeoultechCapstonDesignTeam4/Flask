@@ -1,5 +1,7 @@
 from flask import Flask, jsonify, request
 
+import torch.hub
+import ssl
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
@@ -191,6 +193,18 @@ def preprocess_image(image_path):
     return image_tensor
 
 eye_label = ['정상', '결막염', '백내장', '색소침착성 각막염', '유루증']
+eye_detection_model = torch.hub.load('ultralytics/yolov5', 'custom', path='./eye_detection.pt', force_reload=True)
+eye_detection_model
+test_file = './정상_눈두개.jpg'
+
+@app.route('/test', methods=['POST'])
+def test():
+    try:
+        # image_file = request.files['image']
+        img = './정상_눈두개.jpg'
+        print(eye_detection_model(img))
+    except Exception as e:
+        return jsonify({'error':str(e)})
 
 @app.route('/predict', methods=['POST'])
 def predict():
