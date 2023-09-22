@@ -1,22 +1,13 @@
 from flask import Flask, jsonify, request
-
-import torch.hub
-import ssl
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 from PIL import Image
-import sys
-import os
 
-# 현재 스크립트의 경로를 가져옵니다.
-current_path = os.path.dirname(os.path.abspath(__file__))
+import torch.hub
+import ssl
 
-# yolov5의 경로를 sys.path에 추가합니다.
-sys.path.append(os.path.join(current_path, '..', 'yolov5'))
-
-from models.yolo import Model
 
 
 app = Flask(__name__)
@@ -132,18 +123,6 @@ class MobileNet(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
 
-device = "cuda" if torch.cuda.is_available() else   "cpu"
-model = MobileNet(1, 5)
-
-state_dict = torch.load('eye.pt', map_location=device)
-model.load_state_dict(state_dict)
-model.eval()
-
-image_transforms = transforms.Compose([
-    transforms.Resize(224),
-    transforms.ToTensor()
-])
- 
 def preprocess_image(image_path):
     # 이미지를 열고 RGB 형식으로 변환
     image = Image.open(image_path).convert("RGB")
@@ -163,48 +142,71 @@ def preprocess_image(image_path):
     
     return image_tensor
 
+
+#안구질환 검출 모델
+device = "cuda" if torch.cuda.is_available() else   "cpu"
+model = MobileNet(1, 5)
+
+state_dict = torch.load('eye.pt', map_location=device)
+model.load_state_dict(state_dict)
+model.eval()
+
+image_transforms = transforms.Compose([
+    transforms.Resize(224),
+    transforms.ToTensor()
+])
+
 eye_label = ['정상', '결막염', '백내장', '색소침착성 각막염', '유루증']
-eye_detection_model_path = os.path.join(current_path, 'eye_detection.pt')
 
-eye_detection_model = Model(eye_detection_model_path)
-eye_detection_model
-test_file = './정상_눈두개.jpg'
+#눈알 추적
+eye_detection_model_path = './eye_detection.pt'
+eye_detection_model = torch.hub.load('ultralytics/yolov5', 'custom', path=eye_detection_model_path, force_reload=True)
 
-
-
-@app.route('/test', methods=['GET'])
-def test():
+import re
+def is_Eye(image_file):
     try:
-        # image_file = request.files['image']
-        img = './정상_눈두개.jpg'
-        print(eye_detection_model(img))
+        image = Image.open(image_file)
+        result = eye_detection_model(image)
+        result_str = str(result)
+        match_one = re.search(r'(\d+ eye)', result_str)
+        if match_one:
+            return True
+        else:
+            return False
+
     except Exception as e:
-        return jsonify({'error':str(e)})
+        return jsonify({'error': str(e)})
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
         image_file = request.files['image']
-        
-        # 이미지 전처리 함수를 사용하여 이미지를 텐서로 변환
-        image_tensor = preprocess_image(image_file)
 
-        with torch.no_grad():
-            output = model(image_tensor)
-        
-        probabilities = F.softmax(output, dim=1)
-        predicted_classes = torch.argsort(probabilities, descending=True)[0].tolist()
-        class_probabilities = [probabilities[0][i].item() * 100 for i in predicted_classes]
+        isEye = is_Eye(image_file)
+        if isEye:
+            # 이미지 전처리 함수를 사용하여 이미지를 텐서로 변환
+            image_tensor = preprocess_image(image_file)
 
-        predicted_labels = []
-        for i in predicted_classes:
-            if 0 <= i < len(eye_label):
-                predicted_labels.append(eye_label[i])
-            else:
-                predicted_labels.append("Unknown")
+            with torch.no_grad():
+                output = model(image_tensor)
+            
+            probabilities = F.softmax(output, dim=1)
+            predicted_classes = torch.argsort(probabilities, descending=True)[0].tolist()
+            class_probabilities = [probabilities[0][i].item() * 100 for i in predicted_classes]
 
-        data = {'Predicted': predicted_labels, 'Confidence': class_probabilities}
-        return jsonify(data)
+            predicted_labels = []
+            for i in predicted_classes:
+                if 0 <= i < len(eye_label):
+                    predicted_labels.append(eye_label[i])
+                else:
+                    predicted_labels.append("Unknown")
+
+            data = {'result': 'Success','Predicted': predicted_labels, 'Confidence': class_probabilities}
+            return jsonify(data)
+        else:
+            data = {'result': 'Failed'}
+            return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)})
 
