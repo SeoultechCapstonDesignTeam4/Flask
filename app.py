@@ -5,8 +5,8 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 from PIL import Image
 
-import torch.hub
-import ssl
+# import torch.hub
+# import ssl
 
 
 
@@ -159,23 +159,23 @@ image_transforms = transforms.Compose([
 eye_label = ['정상', '결막염', '백내장', '색소침착성 각막염', '유루증']
 
 #눈알 추적
-eye_detection_model_path = './eye_detection.pt'
-eye_detection_model = torch.hub.load('ultralytics/yolov5', 'custom', path=eye_detection_model_path, force_reload=True)
+# eye_detection_model_path = './eye_detection.pt'
+# eye_detection_model = torch.hub.load('ultralytics/yolov5', 'custom', path=eye_detection_model_path, force_reload=True)
 
-import re
-def is_Eye(image_file):
-    try:
-        image = Image.open(image_file)
-        result = eye_detection_model(image)
-        result_str = str(result)
-        match_one = re.search(r'(\d+ eye)', result_str)
-        if match_one:
-            return True
-        else:
-            return False
+# import re
+# def is_Eye(image_file):
+#     try:
+#         image = Image.open(image_file)
+#         result = eye_detection_model(image)
+#         result_str = str(result)
+#         match_one = re.search(r'(\d+ eye)', result_str)
+#         if match_one:
+#             return True
+#         else:
+#             return False
 
-    except Exception as e:
-        return jsonify({'error': str(e)})
+#     except Exception as e:
+#         return jsonify({'error': str(e)})
 
 
 @app.route('/predict', methods=['POST'])
@@ -183,33 +183,57 @@ def predict():
     try:
         image_file = request.files['image']
 
-        isEye = is_Eye(image_file)
-        if isEye:
-            # 이미지 전처리 함수를 사용하여 이미지를 텐서로 변환
-            image_tensor = preprocess_image(image_file)
+        # 이미지 전처리 함수를 사용하여 이미지를 텐서로 변환
+        image_tensor = preprocess_image(image_file)
 
-            with torch.no_grad():
-                output = model(image_tensor)
-            
-            probabilities = F.softmax(output, dim=1)
-            predicted_classes = torch.argsort(probabilities, descending=True)[0].tolist()
-            class_probabilities = [probabilities[0][i].item() * 100 for i in predicted_classes]
+        with torch.no_grad():
+            output = model(image_tensor)
+        
+        probabilities = F.softmax(output, dim=1)
+        predicted_classes = torch.argsort(probabilities, descending=True)[0].tolist()
+        class_probabilities = [probabilities[0][i].item() * 100 for i in predicted_classes]
 
-            predicted_labels = []
-            for i in predicted_classes:
-                if 0 <= i < len(eye_label):
-                    predicted_labels.append(eye_label[i])
-                else:
-                    predicted_labels.append("Unknown")
+        predicted_labels = []
+        for i in predicted_classes:
+            if 0 <= i < len(eye_label):
+                predicted_labels.append(eye_label[i])
+            else:
+                predicted_labels.append("Unknown")
 
-            data = {'result': 'Success','Predicted': predicted_labels, 'Confidence': class_probabilities}
-            return jsonify(data)
-        else:
-            data = {'result': 'Failed'}
-            return jsonify(data)
+        data = {'result': 'Success','Predicted': predicted_labels, 'Confidence': class_probabilities}
+        return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)})
+    # try:
+    #     image_file = request.files['image']
+
+    #     isEye = is_Eye(image_file)
+    #     if isEye:
+    #         # 이미지 전처리 함수를 사용하여 이미지를 텐서로 변환
+    #         image_tensor = preprocess_image(image_file)
+
+    #         with torch.no_grad():
+    #             output = model(image_tensor)
+            
+    #         probabilities = F.softmax(output, dim=1)
+    #         predicted_classes = torch.argsort(probabilities, descending=True)[0].tolist()
+    #         class_probabilities = [probabilities[0][i].item() * 100 for i in predicted_classes]
+
+    #         predicted_labels = []
+    #         for i in predicted_classes:
+    #             if 0 <= i < len(eye_label):
+    #                 predicted_labels.append(eye_label[i])
+    #             else:
+    #                 predicted_labels.append("Unknown")
+
+    #         data = {'result': 'Success','Predicted': predicted_labels, 'Confidence': class_probabilities}
+    #         return jsonify(data)
+    #     else:
+    #         data = {'result': 'Failed'}
+    #         return jsonify(data)
+    # except Exception as e:
+    #     return jsonify({'error': str(e)})
 
 
 if __name__ == '__main__':
-   app.run('0.0.0.0', port=5000, debug=True)
+   app.run('0.0.0.0', port=5002, debug=True)
